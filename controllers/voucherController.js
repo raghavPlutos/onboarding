@@ -1,5 +1,8 @@
 const Voucher = require("../models/Vouchers");
 const Customer = require("../models/Customers");
+const csv = require('csv-parser')
+const fs = require('fs');
+
 const createVoucher = async (req, res) =>{
     try {
         const {
@@ -93,10 +96,33 @@ const deleteVoucher = async (req, res) =>{
     }
 }
 
+const createVoucherCSV = async (req, res) =>{
+    try {
+        let results = [], vouchers = [];
+        fs.createReadStream(req.file.filename)  
+        .pipe(csv())
+        .on('data', (data) => results.push(data))
+        .on('end',async () => {
+            for(let i = 0; i< results.length; ++i){
+                results[i]["used"] = false;
+                if(Object.keys(results[i]).length === 6){
+                    const temp = await Voucher.query().insert(results[i]);
+                    vouchers.push(temp);
+                }
+            }
+            fs.unlinkSync(req.file.filename);
+            res.json(vouchers);
+        });
+    } catch (err) {
+        res.json({err: err.message});
+    }
+}
+
 module.exports = {
     createVoucher,
     getAll,
     getVoucherById,
     updateVoucher,
-    deleteVoucher
+    deleteVoucher,
+    createVoucherCSV
 }
